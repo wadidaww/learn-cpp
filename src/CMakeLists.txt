@@ -7,3 +7,6 @@ add_executable(async_example async_example.cpp)
 
 # IPC examples
 add_subdirectory(ipc)
+
+# IPC with file descriptors, select() and epoll()
+add_subdirectory(ipc_fd)
