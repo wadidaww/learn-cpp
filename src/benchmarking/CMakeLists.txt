@@ -1,0 +1,3 @@
+add_executable(micro_benchmark micro_benchmark.cpp)
+add_executable(macro_benchmark macro_benchmark.cpp)
+add_executable(partial_benchmark partial_benchmark.cpp)
