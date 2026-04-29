@@ -1,130 +1,219 @@
-// boost_lockfree.cpp
-// Demonstrates Boost.Lockfree data structures for HPC producer-consumer pipelines.
+// boost_lockfree.cpp — Advanced
 //
-// Compile (header-only, no extra link flags):
+// Multi-stage lock-free streaming pipeline with a zero-allocation free-list.
+//
+// Pipeline topology:
+//
+//   Generator ──[spsc_queue]──► Enricher ──[mpmc_queue]──► Aggregators(N)
+//       ▲                                                         │
+//       └───────────────[stack: free-list pool]──────────────────┘
+//
+// Facilities combined:
+//   boost::lockfree::spsc_queue   — stage 0→1 (one producer, one consumer)
+//                                   wait-free, cache-line friendly ring buffer
+//   boost::lockfree::queue        — stage 1→2 (one producer, N consumers)
+//                                   CAS-based MPMC bounded queue
+//   boost::lockfree::stack        — object-pool free-list: Events are
+//                                   pre-allocated; returned to the pool after
+//                                   processing — zero heap allocation in steady
+//                                   state, cache-hot reuse
+//   queue::consume_all(callback)  — batch-drain a queue with one callback per
+//                                   item; amortises CAS overhead vs pop()-loop
+//   std::atomic                   — per-stage throughput counters (no mutex)
+//   Exponential backoff           — progressive sleep to avoid spinning a hot
+//                                   CPU core under back-pressure
+//
+// Compile (lockfree is header-only):
 //   g++ -std=c++17 boost_lockfree.cpp -pthread -o boost_lockfree
-//
-// Concepts shown:
-//   - spsc_queue : single-producer / single-consumer ring buffer (fastest)
-//   - queue      : multi-producer / multi-consumer bounded queue
-//   - stack      : multi-producer / multi-consumer lock-free stack
 
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/lockfree/queue.hpp>
 #include <boost/lockfree/stack.hpp>
 #include <atomic>
+#include <chrono>
 #include <iostream>
 #include <thread>
 #include <vector>
 
-// ---------------------------------------------------------------------------
-// Example 1: spsc_queue — single producer / single consumer
-//
-// The ring buffer is the fastest lock-free structure when only one thread
-// writes and one thread reads. Typical use: audio pipelines, sensor streams.
-// ---------------------------------------------------------------------------
-void spsc_queue_example() {
-    // Compile-time capacity of 1024 elements.
-    boost::lockfree::spsc_queue<int, boost::lockfree::capacity<1024>> q;
+using namespace std::chrono_literals;
 
-    std::atomic<bool> done{false};
-    long long sum = 0;
+// ============================================================================
+//  Event — the item flowing through the pipeline.
+//  Allocated once at startup from a static arena; recycled via the free-list.
+// ============================================================================
+struct Event {
+    int    id;
+    double value;
+    int    tag;       // classification tag added by the enricher
+    bool   processed; // marked by an aggregator
+};
 
-    std::thread producer([&] {
-        for (int i = 0; i < 10'000; ++i) {
-            while (!q.push(i)) { /* spin until space available */ }
-        }
-        done = true;
-    });
+// ============================================================================
+//  Pipeline constants
+// ============================================================================
+static constexpr int POOL_SIZE       = 512;
+static constexpr int SPSC_CAPACITY   = 256;
+static constexpr int MPMC_CAPACITY   = 256;
+static constexpr int TOTAL_EVENTS    = 50'000;
+static constexpr int NUM_AGGREGATORS = 4;
 
-    std::thread consumer([&] {
-        int val;
-        while (!done || q.read_available()) {
-            if (q.pop(val)) sum += val;
-        }
-    });
+// ============================================================================
+//  Shared lock-free structures
+// ============================================================================
+// Free-list: compile-time capacity, no dynamic allocation.
+boost::lockfree::stack<Event*, boost::lockfree::capacity<POOL_SIZE>> free_list;
 
-    producer.join();
-    consumer.join();
-    std::cout << "[spsc_queue] sum 0..9999 = " << sum
-              << "  (expected " << (9999LL * 10000 / 2) << ")\n";
-}
+// Stage 0→1: generator writes, enricher reads (spsc = no CAS on fast path).
+boost::lockfree::spsc_queue<Event*,
+    boost::lockfree::capacity<SPSC_CAPACITY>>                         stage01;
 
-// ---------------------------------------------------------------------------
-// Example 2: queue — multiple producers and multiple consumers
-//
-// boost::lockfree::queue is safe for any number of concurrent push/pop calls.
-// Items are processed in roughly FIFO order (no hard ordering guarantee).
-// ---------------------------------------------------------------------------
-void mpmc_queue_example() {
-    // Runtime capacity: 128 slots (must be a power of two).
-    boost::lockfree::queue<int> q(128);
+// Stage 1→2: enricher writes, aggregators race to consume (MPMC).
+boost::lockfree::queue<Event*>                                        stage12{MPMC_CAPACITY};
 
-    std::atomic<int> produced{0};
-    std::atomic<int> consumed{0};
+// Per-stage counters; relaxed loads/stores are sufficient for stats.
+std::atomic<long> cnt_generated{0};
+std::atomic<long> cnt_enriched{0};
+std::atomic<long> cnt_aggregated{0};
 
-    // 4 producers each push 250 items.
-    std::vector<std::thread> producers;
-    for (int p = 0; p < 4; ++p) {
-        producers.emplace_back([&, p] {
-            for (int i = 0; i < 250; ++i) {
-                int val = p * 1000 + i;
-                while (!q.push(val)) { /* back-pressure: queue full */ }
-                ++produced;
-            }
-        });
+// Termination signals.
+std::atomic<bool> generator_done{false};
+std::atomic<bool> enricher_done{false};
+
+// ============================================================================
+//  Backoff
+//  Progressive sleep strategy: busy-spin → yield → sleep.
+//  Applied whenever a push/pop fails (back-pressure or empty queue).
+// ============================================================================
+struct Backoff {
+    void spin() {
+        if      (n_ < 4)  { /* tight spin */ }
+        else if (n_ < 16) { std::this_thread::yield(); }
+        else              { std::this_thread::sleep_for(50us); }
+        ++n_;
     }
+    void reset() noexcept { n_ = 0; }
+private:
+    int n_{0};
+};
 
-    // 4 consumers drain the queue.
-    std::atomic<bool> stop{false};
-    std::vector<std::thread> consumers;
-    for (int c = 0; c < 4; ++c) {
-        consumers.emplace_back([&] {
-            int val;
-            while (!stop || q.unsynchronized_empty() == false) {
-                if (q.pop(val)) ++consumed;
-            }
-        });
+// ============================================================================
+//  Stage 0: Generator
+//  Pops an Event from the free-list, fills it in, and pushes it into stage01.
+//  Back-pressure: if the free-list or spsc_queue is full, the generator backs
+//  off — the downstream stages are the pacemaker.
+// ============================================================================
+void generator() {
+    Backoff bo;
+    for (int i = 0; i < TOTAL_EVENTS; ++i) {
+        Event* ev = nullptr;
+        while (!free_list.pop(ev)) bo.spin();   // wait for a recycled slot
+        bo.reset();
+
+        ev->id        = i;
+        ev->value     = static_cast<double>(i) * 0.001;
+        ev->tag       = 0;
+        ev->processed = false;
+
+        while (!stage01.push(ev)) bo.spin();    // back-pressure from enricher
+        bo.reset();
+        ++cnt_generated;
     }
-
-    for (auto& t : producers) t.join();
-    stop = true;
-    for (auto& t : consumers) t.join();
-
-    std::cout << "[mpmc_queue] produced=" << produced
-              << "  consumed=" << consumed << "\n";
+    generator_done.store(true, std::memory_order_release);
+    std::cout << "[generator ] done  n=" << cnt_generated.load() << "\n";
 }
 
-// ---------------------------------------------------------------------------
-// Example 3: stack — lock-free LIFO
+// ============================================================================
+//  Stage 1: Enricher
+//  Reads from stage01 (spsc), classifies the event, pushes into stage12 (mpmc).
+// ============================================================================
+void enricher() {
+    Event*  ev = nullptr;
+    Backoff bo;
+    while (true) {
+        if (stage01.pop(ev)) {
+            bo.reset();
+            ev->tag = ev->id % 8;   // classify into 8 buckets
+            Backoff push_bo;
+            while (!stage12.push(ev)) push_bo.spin();
+            ++cnt_enriched;
+        } else {
+            // Drain any residual items after the generator signals done.
+            if (generator_done.load(std::memory_order_acquire)
+                    && stage01.empty())
+                break;
+            bo.spin();
+        }
+    }
+    enricher_done.store(true, std::memory_order_release);
+    std::cout << "[enricher  ] done  n=" << cnt_enriched.load() << "\n";
+}
+
+// ============================================================================
+//  Stage 2: Aggregator (one of NUM_AGGREGATORS)
 //
-// Useful for free-list memory pools and work-stealing schedulers.
-// ---------------------------------------------------------------------------
-void lockfree_stack_example() {
-    boost::lockfree::stack<int> stk(64);
-
-    // Push items.
-    for (int i = 1; i <= 10; ++i) stk.push(i);
-
-    // Pop and print (LIFO order).
-    std::cout << "[lockfree_stack] popped:";
-    int val;
-    while (stk.pop(val)) std::cout << " " << val;
-    std::cout << "\n";
+//  Uses consume_all() which drains all currently-visible items in a single
+//  sweep, invoking the callback once per item.  This batches the CAS
+//  operations on the MPMC queue's head pointer, which is more efficient than
+//  calling pop() in a tight loop.
+// ============================================================================
+void aggregator(int id) {
+    long local_n = 0;
+    Backoff bo;
+    while (true) {
+        std::size_t n = stage12.consume_all([&](Event* ev) {
+            ev->processed = true;
+            free_list.push(ev);   // return to pool — enables the generator
+            ++local_n;
+            ++cnt_aggregated;
+        });
+        if (n == 0) {
+            if (enricher_done.load(std::memory_order_acquire)
+                    && stage12.empty())
+                break;
+            bo.spin();
+        } else {
+            bo.reset();
+        }
+    }
+    std::cout << "[aggregator " << id << "] done  local_n=" << local_n << "\n";
 }
 
-// ---------------------------------------------------------------------------
-// main
-// ---------------------------------------------------------------------------
+// ============================================================================
+//  main
+// ============================================================================
 int main() {
-    std::cout << "=== spsc_queue (single producer / single consumer) ===\n";
-    spsc_queue_example();
+    std::cout << "=== Multi-stage lock-free pipeline"
+                 " (spsc → mpmc + free-list pool) ===\n\n";
 
-    std::cout << "\n=== MPMC queue (multiple producers / multiple consumers) ===\n";
-    mpmc_queue_example();
+    // Pre-populate the free-list with Events from a static arena.
+    // This is the only allocation; the pipeline itself is allocation-free.
+    static Event arena[POOL_SIZE];
+    for (int i = 0; i < POOL_SIZE; ++i)
+        free_list.push(&arena[i]);
 
-    std::cout << "\n=== lock-free stack ===\n";
-    lockfree_stack_example();
+    auto t0 = std::chrono::steady_clock::now();
+
+    std::thread t_gen(generator);
+    std::thread t_enr(enricher);
+    std::vector<std::thread> t_agg;
+    for (int i = 0; i < NUM_AGGREGATORS; ++i)
+        t_agg.emplace_back(aggregator, i);
+
+    t_gen.join();
+    t_enr.join();
+    for (auto& t : t_agg) t.join();
+
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                  std::chrono::steady_clock::now() - t0).count();
+
+    std::cout << "\n--- Pipeline stats ---\n"
+              << "  generated  = " << cnt_generated.load()  << "\n"
+              << "  enriched   = " << cnt_enriched.load()   << "\n"
+              << "  aggregated = " << cnt_aggregated.load() << "\n"
+              << "  wall time  = " << ms << " ms\n"
+              << "  throughput ≈ "
+              << (cnt_aggregated.load() * 1000L / std::max(1L, (long)ms))
+              << " events/sec\n";
 
     return 0;
 }
