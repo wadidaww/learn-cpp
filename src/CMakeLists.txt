@@ -14,3 +14,6 @@ add_subdirectory(ipc_fd)
 
 # Python binding example (pybind11)
 add_subdirectory(python_binding)
+
+# Allocator lessons
+add_subdirectory(allocator)
