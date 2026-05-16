@@ -77,10 +77,10 @@ Use template variadics for:
 ## Suggested commands
 
 ```bash
-g++ -std=c++20 /home/runner/work/learn-cpp/learn-cpp/src/variadic/c_style_variadics.cpp -o /tmp/c_style_variadics
+g++ -std=c++20 src/variadic/c_style_variadics.cpp -o /tmp/c_style_variadics
 /tmp/c_style_variadics
 
-g++ -std=c++20 /home/runner/work/learn-cpp/learn-cpp/src/variadic/template_variadics.cpp -o /tmp/template_variadics
+g++ -std=c++20 src/variadic/template_variadics.cpp -o /tmp/template_variadics
 /tmp/template_variadics
 ```
 
