@@ -60,7 +60,7 @@ std::array<FileDescriptor, 2> make_pipe() {
 
 void demonstrate_kernel_user_transitions() {
     auto pipe_fds = make_pipe();
-    const std::array<std::string_view, 4> parts{"AB", "CD", "EF", "GH"};
+    std::array<std::array<char, 2>, 4> parts{{{{'A', 'B'}}, {{'C', 'D'}}, {{'E', 'F'}}, {{'G', 'H'}}}};
 
     // Four writes mean four user/kernel transitions for one logical message.
     for (const auto part : parts) {
@@ -76,7 +76,7 @@ void demonstrate_kernel_user_transitions() {
 
     std::array<iovec, 4> iov{};
     for (std::size_t i = 0; i < parts.size(); ++i) {
-        iov[i].iov_base = const_cast<char*>(parts[i].data());
+        iov[i].iov_base = parts[i].data();
         iov[i].iov_len = parts[i].size();
     }
 

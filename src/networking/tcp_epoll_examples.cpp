@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -113,6 +114,17 @@ Socket listen_on_loopback() {
     return listener;
 }
 
+void wait_writable(int fd) {
+    pollfd writable{fd, POLLOUT, 0};
+    const int ready = ::poll(&writable, 1, 1000);
+    if (ready == -1) {
+        throw std::runtime_error("poll(POLLOUT) failed: " + std::string(std::strerror(errno)));
+    }
+    if (ready == 0) {
+        throw std::runtime_error("poll(POLLOUT) timed out");
+    }
+}
+
 void send_all(int fd, std::string_view message) {
     while (!message.empty()) {
         const ssize_t sent = ::send(fd, message.data(), message.size(), 0);
@@ -121,7 +133,7 @@ void send_all(int fd, std::string_view message) {
                 continue;
             }
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                std::this_thread::yield();
+                wait_writable(fd);
                 continue;
             }
             throw std::runtime_error("send() failed: " + std::string(std::strerror(errno)));

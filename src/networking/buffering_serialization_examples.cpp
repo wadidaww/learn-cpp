@@ -127,11 +127,11 @@ void demonstrate_scatter_gather() {
     FileDescriptor read_fd(pipe_fds[0]);
     FileDescriptor write_fd(pipe_fds[1]);
 
-    const std::string_view header{"HDR"};
-    const std::string_view body{"PAYLOAD"};
+    std::array<char, 3> header{{'H', 'D', 'R'}};
+    std::array<char, 7> body{{'P', 'A', 'Y', 'L', 'O', 'A', 'D'}};
     std::array<iovec, 2> parts{{
-        {const_cast<char*>(header.data()), header.size()},
-        {const_cast<char*>(body.data()), body.size()},
+        {header.data(), header.size()},
+        {body.data(), body.size()},
     }};
 
     if (::writev(write_fd.get(), parts.data(), static_cast<int>(parts.size())) == -1) {
