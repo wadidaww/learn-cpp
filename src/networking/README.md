@@ -46,16 +46,35 @@ program.  The most important habits are:
 - `low_latency_udp.cpp` is a commented, runnable UDP ping-pong benchmark.  It
   runs a local echo server in one thread, sends fixed-size packets from a client
   socket, and reports round-trip latency percentiles.
+- `latency_cost_examples.cpp` implements small examples for kernel/user
+  transitions, copies, allocation control, contention, context switches, cache
+  locality, queueing/backpressure, and protocol overhead.
+- `tcp_epoll_examples.cpp` implements a blocking TCP echo exchange, a
+  nonblocking TCP client using `epoll`, and an event-driven multi-client echo
+  server.
+- `buffering_serialization_examples.cpp` implements a ring buffer,
+  length-prefixed framing, endian conversion, in-place parsing, and
+  scatter/gather I/O.
+- `concurrency_domain_examples.cpp` implements bounded handoff queues, sharding,
+  object reuse, percentile timing, and tiny message shapes for trading, games,
+  telemetry, RPC, and exchange gateways.
 
 Build only this lesson from the repository root:
 
 ```bash
 g++ -std=c++20 -O2 -Wall -Wextra src/networking/low_latency_udp.cpp -pthread -o /tmp/low_latency_udp
 /tmp/low_latency_udp
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/latency_cost_examples.cpp -pthread -o /tmp/latency_cost_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/tcp_epoll_examples.cpp -pthread -o /tmp/tcp_epoll_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/buffering_serialization_examples.cpp -o /tmp/buffering_serialization_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/concurrency_domain_examples.cpp -pthread -o /tmp/concurrency_domain_examples
 ```
 
-Or build it through CMake as `networking_low_latency_udp` when the top-level build
-environment has all optional dependencies installed.
+Or build these through CMake as `networking_low_latency_udp`,
+`networking_latency_cost_examples`, `networking_tcp_epoll_examples`,
+`networking_buffering_serialization_examples`, and
+`networking_concurrency_domain_examples` when the top-level build environment
+has all optional dependencies installed.
 
 ## Reading the code
 
