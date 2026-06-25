@@ -12,9 +12,14 @@ constexpr auto sum_values(Ts... values) {
     return (values + ... + 0);
 }
 
-template<typename First, typename... Rest>
-constexpr auto min_value(First first, Rest... rest) {
-    using Value = std::common_type_t<First, Rest...>;
+template<typename T>
+constexpr auto min_value(T value) {
+    return value;
+}
+
+template<typename First, typename Second, typename... Rest>
+constexpr auto min_value(First first, Second second, Rest... rest) {
+    using Value = std::common_type_t<First, Second, Rest...>;
     Value minimum = static_cast<Value>(first);
     const auto keep_smaller = [&minimum](const auto& value) {
         const Value candidate = static_cast<Value>(value);
@@ -22,16 +27,18 @@ constexpr auto min_value(First first, Rest... rest) {
             minimum = candidate;
         }
     };
+    keep_smaller(second);
     (keep_smaller(rest), ...);
     return minimum;
 }
 
-template<typename... Ts>
-auto make_vector(Ts&&... values) {
-    using Value = std::common_type_t<Ts...>;
+template<typename First, typename... Rest>
+auto make_vector(First&& first, Rest&&... rest) {
+    using Value = std::common_type_t<First, Rest...>;
     std::vector<Value> result;
-    result.reserve(sizeof...(Ts));
-    (result.emplace_back(std::forward<Ts>(values)), ...);
+    result.reserve(sizeof...(Rest) + 1);
+    result.emplace_back(std::forward<First>(first));
+    (result.emplace_back(std::forward<Rest>(rest)), ...);
     return result;
 }
 
@@ -42,6 +49,7 @@ void print_line(const Ts&... values) {
 }
 
 void tiny_printf_impl(std::ostream& output, const std::string& format, std::size_t offset) {
+    // Base case for the recursive pack expansion.
     const std::size_t placeholder = format.find("{}", offset);
     if (placeholder != std::string::npos) {
         throw std::invalid_argument("tiny_printf received fewer values than placeholders");
