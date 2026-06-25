@@ -37,6 +37,27 @@ You can run each example individually:
 - `./src/future_promise_example`
 - `./src/async_example`
 
+### Networking and Low-Latency Examples
+
+- `./src/networking/networking_low_latency_udp` — **Low-latency UDP networking**: commented ping-pong benchmark showing fixed-size binary packets, non-blocking sockets, socket buffer tuning, bounded spin/yield receive loops, and p50/p99/p99.9 latency reporting.
+- `./src/networking/networking_latency_cost_examples` — runnable examples for kernel/user transitions, copies, allocations, contention, context switches, cache misses, delayed packet handling, and protocol overhead.
+- `./src/networking/networking_tcp_epoll_examples` — blocking TCP echo, nonblocking TCP client, `TCP_NODELAY`, and event-driven multi-client `epoll` server examples.
+- `./src/networking/networking_buffering_serialization_examples` — ring buffers, length-prefixed framing, endian conversion, in-place parsing, and scatter/gather I/O examples.
+- `./src/networking/networking_concurrency_domain_examples` — bounded queues, sharding, object reuse, percentile timing, and domain message examples for trading, games, telemetry, RPC, and exchange gateways. Additional notes in `src/networking/01_latency_costs.md`, `02_foundations.md`, and `03_domains_and_learning_path.md` explain the concepts and a project-based learning path.
+- `./src/networking/networking_foundation_project_examples` — remaining foundation/project examples for IP/ports/MTU, packet loss/retransmission, congestion control, Nagle tradeoffs, `sendmsg`/`recvmsg`, `select`/`poll`, edge-triggered vs level-triggered `epoll`, cursor buffers, reusable strings, varints, lock-free handoff, CPU affinity/NUMA hints, broadcaster backpressure, expected-style errors, per-stage timing, pitfall checks, tool commands, and library choices.
+
+You can also compile the lesson directly:
+
+```bash
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/low_latency_udp.cpp -pthread -o /tmp/low_latency_udp
+/tmp/low_latency_udp
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/latency_cost_examples.cpp -pthread -o /tmp/latency_cost_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/tcp_epoll_examples.cpp -pthread -o /tmp/tcp_epoll_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/buffering_serialization_examples.cpp -o /tmp/buffering_serialization_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/concurrency_domain_examples.cpp -pthread -o /tmp/concurrency_domain_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/foundation_project_examples.cpp -pthread -o /tmp/foundation_project_examples
+```
+
 ### Benchmarking Examples
 
 - `./src/benchmarking/micro_benchmark` — **Micro benchmarking**: times small, isolated code snippets (sorting algorithms, string concatenation strategies, integer square root implementations) using `std::chrono::high_resolution_clock` with many iterations to reduce measurement noise.
