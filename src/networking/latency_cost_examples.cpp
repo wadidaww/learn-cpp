@@ -156,7 +156,7 @@ void demonstrate_context_switches() {
     ready.store(true, std::memory_order_release);
     worker.join();
 
-    std::cout << "context switches: prefer event loops to one sleeping worker per socket\n";
+    std::cout << "context switches: a yielding worker still needs scheduling; event loops avoid one worker per socket\n";
 }
 
 void demonstrate_cache_misses() {

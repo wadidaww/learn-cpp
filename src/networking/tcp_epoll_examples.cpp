@@ -194,7 +194,11 @@ std::string nonblocking_client_round_trip(std::uint16_t port, std::string_view m
     }
 
     epoll_event ready{};
-    if (::epoll_wait(epoll_fd.get(), &ready, 1, 1000) != 1) {
+    const int connect_ready = ::epoll_wait(epoll_fd.get(), &ready, 1, 1000);
+    if (connect_ready == -1) {
+        throw std::runtime_error("epoll_wait() failed waiting for connect");
+    }
+    if (connect_ready == 0) {
         throw std::runtime_error("epoll_wait() timed out waiting for connect");
     }
 
@@ -210,7 +214,11 @@ std::string nonblocking_client_round_trip(std::uint16_t port, std::string_view m
     if (::epoll_ctl(epoll_fd.get(), EPOLL_CTL_MOD, client.get(), &event) == -1) {
         throw std::runtime_error("epoll_ctl(MOD) failed");
     }
-    if (::epoll_wait(epoll_fd.get(), &ready, 1, 1000) != 1) {
+    const int reply_ready = ::epoll_wait(epoll_fd.get(), &ready, 1, 1000);
+    if (reply_ready == -1) {
+        throw std::runtime_error("epoll_wait() failed waiting for reply");
+    }
+    if (reply_ready == 0) {
         throw std::runtime_error("epoll_wait() timed out waiting for reply");
     }
 

@@ -14,6 +14,8 @@
 
 namespace {
 
+constexpr std::size_t kFrameHeaderBytes = sizeof(std::uint32_t);
+
 class RingBuffer {
 public:
     bool push(std::byte value) {
@@ -45,27 +47,27 @@ private:
 
 std::vector<std::byte> make_frame(std::string_view payload) {
     std::vector<std::byte> frame;
-    frame.resize(sizeof(std::uint32_t) + payload.size());
+    frame.resize(kFrameHeaderBytes + payload.size());
 
     const auto network_size = htonl(static_cast<std::uint32_t>(payload.size()));
     std::memcpy(frame.data(), &network_size, sizeof(network_size));
-    std::memcpy(frame.data() + sizeof(network_size), payload.data(), payload.size());
+    std::memcpy(frame.data() + kFrameHeaderBytes, payload.data(), payload.size());
     return frame;
 }
 
 std::string_view parse_frame(std::span<const std::byte> frame) {
-    if (frame.size() < sizeof(std::uint32_t)) {
+    if (frame.size() < kFrameHeaderBytes) {
         throw std::runtime_error("short frame header");
     }
 
     std::uint32_t network_size{};
     std::memcpy(&network_size, frame.data(), sizeof(network_size));
     const auto payload_size = ntohl(network_size);
-    if (frame.size() - sizeof(network_size) < payload_size) {
+    if (frame.size() - kFrameHeaderBytes < payload_size) {
         throw std::runtime_error("short frame payload");
     }
 
-    const auto* payload = reinterpret_cast<const char*>(frame.data() + sizeof(network_size));
+    const auto* payload = reinterpret_cast<const char*>(frame.data() + kFrameHeaderBytes);
     return {payload, payload_size};
 }
 
