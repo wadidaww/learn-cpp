@@ -16,6 +16,36 @@ namespace {
 
 constexpr std::size_t kFrameHeaderBytes = sizeof(std::uint32_t);
 
+class FileDescriptor {
+public:
+    explicit FileDescriptor(int fd = -1) : fd_(fd) {}
+    ~FileDescriptor() {
+        if (fd_ != -1) {
+            ::close(fd_);
+        }
+    }
+
+    FileDescriptor(const FileDescriptor&) = delete;
+    FileDescriptor& operator=(const FileDescriptor&) = delete;
+
+    FileDescriptor(FileDescriptor&& other) noexcept : fd_(other.fd_) { other.fd_ = -1; }
+    FileDescriptor& operator=(FileDescriptor&& other) noexcept {
+        if (this != &other) {
+            if (fd_ != -1) {
+                ::close(fd_);
+            }
+            fd_ = other.fd_;
+            other.fd_ = -1;
+        }
+        return *this;
+    }
+
+    int get() const { return fd_; }
+
+private:
+    int fd_;
+};
+
 class RingBuffer {
 public:
     bool push(std::byte value) {
@@ -94,6 +124,8 @@ void demonstrate_scatter_gather() {
     if (::pipe(pipe_fds) == -1) {
         throw std::runtime_error("pipe() failed");
     }
+    FileDescriptor read_fd(pipe_fds[0]);
+    FileDescriptor write_fd(pipe_fds[1]);
 
     const std::string_view header{"HDR"};
     const std::string_view body{"PAYLOAD"};
@@ -102,17 +134,14 @@ void demonstrate_scatter_gather() {
         {const_cast<char*>(body.data()), body.size()},
     }};
 
-    if (::writev(pipe_fds[1], parts.data(), static_cast<int>(parts.size())) == -1) {
+    if (::writev(write_fd.get(), parts.data(), static_cast<int>(parts.size())) == -1) {
         throw std::runtime_error("writev() failed");
     }
 
     std::array<char, 10> received{};
-    if (::read(pipe_fds[0], received.data(), received.size()) == -1) {
+    if (::read(read_fd.get(), received.data(), received.size()) == -1) {
         throw std::runtime_error("read() failed");
     }
-
-    ::close(pipe_fds[0]);
-    ::close(pipe_fds[1]);
 
     std::cout << "scatter/gather: wrote '" << std::string_view(received.data(), received.size())
               << "' with one writev call\n";

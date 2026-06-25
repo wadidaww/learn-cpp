@@ -120,6 +120,10 @@ void send_all(int fd, std::string_view message) {
             if (errno == EINTR) {
                 continue;
             }
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                std::this_thread::yield();
+                continue;
+            }
             throw std::runtime_error("send() failed: " + std::string(std::strerror(errno)));
         }
         message.remove_prefix(static_cast<std::size_t>(sent));
