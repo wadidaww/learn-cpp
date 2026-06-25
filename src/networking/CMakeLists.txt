@@ -21,3 +21,7 @@ target_compile_options(networking_buffering_serialization_examples PRIVATE -Wall
 add_executable(networking_concurrency_domain_examples concurrency_domain_examples.cpp)
 target_compile_options(networking_concurrency_domain_examples PRIVATE -Wall -Wextra -O2)
 target_link_libraries(networking_concurrency_domain_examples PRIVATE pthread)
+
+add_executable(networking_foundation_project_examples foundation_project_examples.cpp)
+target_compile_options(networking_foundation_project_examples PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_foundation_project_examples PRIVATE pthread)

@@ -58,6 +58,13 @@ program.  The most important habits are:
 - `concurrency_domain_examples.cpp` implements bounded handoff queues, sharding,
   object reuse, percentile timing, and tiny message shapes for trading, games,
   telemetry, RPC, and exchange gateways.
+- `foundation_project_examples.cpp` fills in the remaining foundation and project
+  examples: IP/ports/MTU sizing, packet loss/retransmission, congestion control,
+  Nagle tradeoffs, `sendmsg`/`recvmsg`, `select`/`poll`, level-triggered vs
+  edge-triggered `epoll`, read/write cursors, reusable strings, varints,
+  lock-free handoff, CPU affinity/NUMA placement hints, broadcaster
+  backpressure, expected-style errors, per-stage timing, pitfall checks, tool
+  commands, and library learning-path choices.
 
 Build only this lesson from the repository root:
 
@@ -68,13 +75,15 @@ g++ -std=c++20 -O2 -Wall -Wextra src/networking/latency_cost_examples.cpp -pthre
 g++ -std=c++20 -O2 -Wall -Wextra src/networking/tcp_epoll_examples.cpp -pthread -o /tmp/tcp_epoll_examples
 g++ -std=c++20 -O2 -Wall -Wextra src/networking/buffering_serialization_examples.cpp -o /tmp/buffering_serialization_examples
 g++ -std=c++20 -O2 -Wall -Wextra src/networking/concurrency_domain_examples.cpp -pthread -o /tmp/concurrency_domain_examples
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/foundation_project_examples.cpp -pthread -o /tmp/foundation_project_examples
 ```
 
 Or build these through CMake as `networking_low_latency_udp`,
 `networking_latency_cost_examples`, `networking_tcp_epoll_examples`,
 `networking_buffering_serialization_examples`, and
-`networking_concurrency_domain_examples` when the top-level build environment
-has all optional dependencies installed.
+`networking_concurrency_domain_examples`, and
+`networking_foundation_project_examples` when the top-level build environment has
+all optional dependencies installed.
 
 ## Reading the code
 
