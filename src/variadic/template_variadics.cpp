@@ -16,7 +16,13 @@ template<typename First, typename... Rest>
 constexpr auto min_value(First first, Rest... rest) {
     using Value = std::common_type_t<First, Rest...>;
     Value minimum = static_cast<Value>(first);
-    ((minimum = static_cast<Value>(rest) < minimum ? static_cast<Value>(rest) : minimum), ...);
+    const auto keep_smaller = [&minimum](const auto& value) {
+        const Value candidate = static_cast<Value>(value);
+        if (candidate < minimum) {
+            minimum = candidate;
+        }
+    };
+    (keep_smaller(rest), ...);
     return minimum;
 }
 
@@ -25,7 +31,7 @@ auto make_vector(Ts&&... values) {
     using Value = std::common_type_t<Ts...>;
     std::vector<Value> result;
     result.reserve(sizeof...(Ts));
-    (result.push_back(static_cast<Value>(std::forward<Ts>(values))), ...);
+    (result.emplace_back(std::forward<Ts>(values)), ...);
     return result;
 }
 
