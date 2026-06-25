@@ -87,7 +87,7 @@ public:
     }
 
 private:
-    int fd_{};
+    int fd_{-1};
 };
 
 sockaddr_in loopback_address(int port) {
@@ -148,9 +148,12 @@ void echo_server(std::atomic<bool>& running) {
     }
 }
 
-std::uint64_t percentile(std::vector<std::uint64_t>& values, double pct) {
+std::uint64_t percentile(const std::vector<std::uint64_t>& values, double pct) {
+    if (values.empty()) {
+        throw std::runtime_error("cannot compute a percentile for an empty sample set");
+    }
+
     const auto index = static_cast<std::size_t>((pct / 100.0) * (values.size() - 1));
-    std::nth_element(values.begin(), values.begin() + static_cast<std::ptrdiff_t>(index), values.end());
     return values[index];
 }
 
@@ -209,11 +212,12 @@ int main() {
         running.store(false, std::memory_order_relaxed);
         server.join();
 
+        // Low-latency lesson: sort once after the measurement loop. Doing this
+        // during packet processing would add avoidable latency to the hot path.
         auto values = round_trip_ns;
+        std::sort(values.begin(), values.end());
         const auto p50 = percentile(values, 50.0);
-        values = round_trip_ns;
         const auto p99 = percentile(values, 99.0);
-        values = round_trip_ns;
         const auto p999 = percentile(values, 99.9);
 
         std::cout << "UDP loopback round-trip latency over " << round_trip_ns.size() << " packets\n"
