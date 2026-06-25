@@ -14,8 +14,9 @@ constexpr auto sum_values(Ts... values) {
 
 template<typename First, typename... Rest>
 constexpr auto min_value(First first, Rest... rest) {
-    auto minimum = first;
-    ((minimum = rest < minimum ? rest : minimum), ...);
+    using Value = std::common_type_t<First, Rest...>;
+    Value minimum = static_cast<Value>(first);
+    ((minimum = static_cast<Value>(rest) < minimum ? static_cast<Value>(rest) : minimum), ...);
     return minimum;
 }
 
@@ -123,6 +124,7 @@ int main() {
     static_assert(!all_integral_v<int, double>);
     static_assert(std::is_same_v<nth_type_t<1, char, double, std::string>, double>);
     static_assert(count_type_v<int, int, double, int, char, int> == 3);
+    static_assert(std::is_same_v<typename decltype(make_vector(1, 2.5, 3u))::value_type, double>);
     static_assert(list_size<type_list<int, double, char>>::value == 3);
     static_assert(value_list<2, 3, 4>::sum == 9);
     static_assert(value_list<2, 3, 4>::product == 24);
