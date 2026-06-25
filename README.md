@@ -39,7 +39,7 @@ You can run each example individually:
 
 ### Networking and Low-Latency Examples
 
-- `./src/networking/networking_low_latency_udp` — **Low-latency UDP networking**: commented ping-pong benchmark showing fixed-size binary packets, non-blocking sockets, socket buffer tuning, bounded spin/yield receive loops, and p50/p99/p99.9 latency reporting.
+- `./src/networking/networking_low_latency_udp` — **Low-latency UDP networking**: commented ping-pong benchmark showing fixed-size binary packets, non-blocking sockets, socket buffer tuning, bounded spin/yield receive loops, and p50/p99/p99.9 latency reporting. Additional notes in `src/networking/01_latency_costs.md`, `02_foundations.md`, and `03_domains_and_learning_path.md` explain kernel/user transitions, copies, allocations, contention, context switches, cache misses, protocol overhead, common domains, and a project-based learning path.
 
 You can also compile the lesson directly:
 

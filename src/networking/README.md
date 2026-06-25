@@ -33,11 +33,19 @@ program.  The most important habits are:
 7. **Keep the network simple.** Fewer hops, less congestion, and colocated
    services usually beat clever code.
 
-## Example in this directory
+## Files in this directory
 
-`low_latency_udp.cpp` is a commented, runnable UDP ping-pong benchmark.  It runs a
-local echo server in one thread, sends fixed-size packets from a client socket,
-and reports round-trip latency percentiles.
+- `01_latency_costs.md` explains kernel/user transitions, copies, allocations,
+  lock contention, context switches, cache misses, delayed packet handling, and
+  unnecessary protocol overhead.
+- `02_foundations.md` gives the learning order for TCP/IP basics, sockets,
+  event-driven I/O, buffer management, serialization, and concurrency models.
+- `03_domains_and_learning_path.md` covers trading systems, game servers,
+  realtime telemetry, RPC systems, exchange gateways, practical architectures,
+  projects, pitfalls, and tools.
+- `low_latency_udp.cpp` is a commented, runnable UDP ping-pong benchmark.  It
+  runs a local echo server in one thread, sends fixed-size packets from a client
+  socket, and reports round-trip latency percentiles.
 
 Build only this lesson from the repository root:
 
