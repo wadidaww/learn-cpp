@@ -17,3 +17,6 @@ add_subdirectory(python_binding)
 
 # Allocator lessons
 add_subdirectory(allocator)
+
+# Networking and low-latency lessons
+add_subdirectory(networking)

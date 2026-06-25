@@ -37,6 +37,17 @@ You can run each example individually:
 - `./src/future_promise_example`
 - `./src/async_example`
 
+### Networking and Low-Latency Examples
+
+- `./src/networking/networking_low_latency_udp` — **Low-latency UDP networking**: commented ping-pong benchmark showing fixed-size binary packets, non-blocking sockets, socket buffer tuning, bounded spin/yield receive loops, and p50/p99/p99.9 latency reporting.
+
+You can also compile the lesson directly:
+
+```bash
+g++ -std=c++20 -O2 -Wall -Wextra src/networking/low_latency_udp.cpp -pthread -o /tmp/low_latency_udp
+/tmp/low_latency_udp
+```
+
 ### Benchmarking Examples
 
 - `./src/benchmarking/micro_benchmark` — **Micro benchmarking**: times small, isolated code snippets (sorting algorithms, string concatenation strategies, integer square root implementations) using `std::chrono::high_resolution_clock` with many iterations to reduce measurement noise.
