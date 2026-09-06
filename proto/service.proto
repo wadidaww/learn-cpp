@@ -1,0 +1,11 @@
+service MyService {
+  rpc GetData(RequestMessage) returns (ResponseMessage) {}
+}
+
+message RequestMessage {
+  // message fields
+}
+
+message ResponseMessage {
+  // message fields
+}

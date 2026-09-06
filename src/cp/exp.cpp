@@ -64,7 +64,6 @@ union A {
     float b;
 };
 
-
 int main(int argc, char *argv[]) {
     string s;
     cout << sizeof(s) << "\n";

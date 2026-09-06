@@ -228,91 +228,118 @@ void mod(T &x) {
     // x = 10;
 }
 
+void fq1(int arr[5]) { cout << &arr << " " << &*arr << endl; }
+void fq2(int (&arr)[5]) { cout << &arr << endl; }
+
+void ql(int *&ptr) {}
+
+// why is it *&ptr instead of &*ptr for reference to a pointer?
+// because &ptr gives us the address of the pointer variable itself, which is a
+// pointer to a pointer (int**), and then dereferencing it with * gives us back
+// the original pointer (int*). So *&ptr effectively cancels out the reference
+// and gives us the original pointer value. If we were to use *&ptr, it would be
+// incorrect because it would attempt to dereference the pointer variable
+// itself, which is not what we want in this context.
+
 int main() {
-    const int x = 1;
-    mod(x);
-    int *a = new int(5);
-    cout <<const_cast<const int*>(a);
-    int *p = new int(10);
-    SmartPtr<int> sp3(p);
-    Q q;
-    cout << q << "\n";
-    cout << static_cast<float>(q) << "\n";
-    // cout << dynamic_cast<float*>(q) << "\n";
-    cout << float(q) << "\n";
-    cout << (float)q << "\n";
+  atomic<int> x;
+  x.store(10, std::memory_order_seq_cst);
+  int arr[5];
+  cout << &arr << endl;
+  fq1(arr);
+  fq2(arr);
 
+  auto rec = [&](auto &&self, int i) -> int {
+    if (i == 0)
+      return 0;
+    return self(self, i - 1) + i;
+  };
+  cout << rec(rec, 10) << endl;
+  return 0;
+  // const int x = 1;
+  mod(x);
+  int *a = new int(5);
+  cout << const_cast<const int *>(a);
+  int *p = new int(10);
+  SmartPtr<int> sp3(p);
+  Q q;
+  cout << q << "\n";
+  cout << static_cast<float>(q) << "\n";
+  // cout << dynamic_cast<float*>(q) << "\n";
+  cout << float(q) << "\n";
+  cout << (float)q << "\n";
 
-    // int x = 1;
-    // unique_ptr<int> up(make_unique<int>(x));
-    // shared_ptr<int> sp_(make_shared<int>(p));
-    // SmartPtr<int> sp(new int(10));
-    // SmartPtr<int> sp2(new int(p));
-    // A a;
-    // B c = A();
-    // c.f();
-    // B *asdf = new A();
-    // asdf->f();
-    // delete asdf;
-    
-    // const int *y;
-    // C a = get(&y);
-    // C b = get2(&y);
-    // cout << a.x << " " << b.x << endl;
-    // int q = 1;
-    // y = &q;
-    // cout << *y << endl;
-    // alignas(hardware_constructive_interference_size) int x = 10;
-    // fun(y);
-    // cout << *y << endl;
-    // double d = 10013.1;
-    // void *p;
-    // memcpy(&p, &d, sizeof(double));
-    // cout << p << endl;
+  // int x = 1;
+  // unique_ptr<int> up(make_unique<int>(x));
+  // shared_ptr<int> sp_(make_shared<int>(p));
+  // SmartPtr<int> sp(new int(10));
+  // SmartPtr<int> sp2(new int(p));
+  // A a;
+  // B c = A();
+  // c.f();
+  // B *asdf = new A();
+  // asdf->f();
+  // delete asdf;
 
-    // char *s;
-    // cin >> s;
-    // const char *__restrict ch = s;
-    // printf(s, 10);
+  // const int *y;
+  // C a = get(&y);
+  // C b = get2(&y);
+  // cout << a.x << " " << b.x << endl;
+  // int q = 1;
+  // y = &q;
+  // cout << *y << endl;
+  // alignas(hardware_constructive_interference_size) int x = 10;
+  // fun(y);
+  // cout << *y << endl;
+  // double d = 10013.1;
+  // void *p;
+  // memcpy(&p, &d, sizeof(double));
+  // cout << p << endl;
 
-    // cout << myMax(10, 2, 5, 15.0, -1) << "\n";
-    // cout << std::max({10, 2, -5, 15, 1}) << "\n";
-    // int x = 10;
-    // class X {
-    //     int x;
-    // public:
-    //     ~X(){}
-    // };
-    // delete new X();
-    // X *asdf = new X();
-    // delete asdf;
-    // func(std::forward<int&>(x));
-    // func(10);
-    // func(int(1));
-    // func(std::forward<int&&>(20));
-    // int z = 1;
-    // int &&y = z + 10;
-    // y = x;
-    // func(y);
-    // cout << typeid(y).name() << endl;
-    // cout << y << endl;
+  // char *s;
+  // cin >> s;
+  // const char *__restrict ch = s;
+  // printf(s, 10);
 
-    // int a= 10;
-    // int &&b = a+10; // b is int &&
-    // auto c =b+10; // c is int
-    // auto &&d = a; // d is int&
-    // int &&di = a; // error, as expected
-    // const int ci = 10;       // Top-level const
-    // volatile double vd = 3.14; // Top-level volatile
-    // const volatile char cvc = 'a'; // Top-level const volatile
+  // cout << myMax(10, 2, 5, 15.0, -1) << "\n";
+  // cout << std::max({10, 2, -5, 15, 1}) << "\n";
+  // int x = 10;
+  // class X {
+  //     int x;
+  // public:
+  //     ~X(){}
+  // };
+  // delete new X();
+  // X *asdf = new X();
+  // delete asdf;
+  // func(std::forward<int&>(x));
+  // func(10);
+  // func(int(1));
+  // func(std::forward<int&&>(20));
+  // int z = 1;
+  // int &&y = z + 10;
+  // y = x;
+  // func(y);
+  // cout << typeid(y).name() << endl;
+  // cout << y << endl;
 
-    // const volatile int* p; // Low-level const (pointer to const int)
-    // func<>(p); // T = const volatile int* (cv-unqualified: low-level const remains)
- 
-    // func<>(ci);  // T = int (cv-unqualified: const stripped)
-    // func(vd);  // T = double (volatile stripped)
-    // func(cvc); // T = char (const volatile stripped)
-    // func(12312); // T = char (const volatile stripped)
+  // int a= 10;
+  // int &&b = a+10; // b is int &&
+  // auto c =b+10; // c is int
+  // auto &&d = a; // d is int&
+  // int &&di = a; // error, as expected
+  // const int ci = 10;       // Top-level const
+  // volatile double vd = 3.14; // Top-level volatile
+  // const volatile char cvc = 'a'; // Top-level const volatile
+
+  // const volatile int* p; // Low-level const (pointer to const int)
+  // func<>(p); // T = const volatile int* (cv-unqualified: low-level const
+  // remains)
+
+  // func<>(ci);  // T = int (cv-unqualified: const stripped)
+  // func(vd);  // T = double (volatile stripped)
+  // func(cvc); // T = char (const volatile stripped)
+  // func(12312); // T = char (const volatile stripped)
 }
 
 /*

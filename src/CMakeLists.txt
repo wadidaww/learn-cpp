@@ -17,3 +17,6 @@ add_subdirectory(python_binding)
 
 # Allocator lessons
 add_subdirectory(allocator)
+
+# Extension points lessons
+add_subdirectory(extension_points)
