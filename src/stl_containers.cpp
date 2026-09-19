@@ -1,3 +1,21 @@
+// STL CONTAINERS
+// ===============
+// Key concepts:
+//   Sequence:    vector (dynamic array), array (fixed), deque (front+back), list (doubly-linked), forward_list (singly-linked)
+//   Associative: map (ordered tree), set (ordered), unordered_map/set (hash table)
+//   Adaptor:     stack (LIFO), queue (FIFO), priority_queue (max-heap)
+//   Utility:     tuple (heterogeneous), optional (nullable), variant (tagged union), span (non-owning view)
+//
+// When to use:
+//   vector: default choice; O(1) append, O(1) random access, O(n) insert at front
+//   deque: frequent push_front + push_back
+//   list/forward_list: frequent insert/delete in middle (no pointer invalidation)
+//   map: ordered key-value pairs (O(log n))
+//   unordered_map: fast lookup (O(1) avg), no ordering
+//   set: sorted unique elements
+//   optional: function may or may not return a value
+//   variant: type-safe union (visit with std::visit)
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -16,159 +34,48 @@
 #include <variant>
 #include <span>
 
-template<typename K, typename V>
-void print_map(const std::string& label, const std::map<K,V>& m) {
-    std::cout << "  " << label << ": {";
-    for (const auto& [k,v] : m) std::cout << k << ":" << v << " ";
-    std::cout << "}\n";
-}
-
 int main() {
-    // --- 1. vector (dynamic array) ---
-    std::cout << "=== 1. vector ===\n";
-    std::vector<int> v = {1, 2, 3, 4, 5};
-    v.push_back(6);
-    v.emplace_back(7);
-    v.pop_back();
-    std::cout << "  size=" << v.size() << " cap=" << v.capacity() << "\n";
-    for (int i : v) std::cout << i << " ";
-    std::cout << "\n";
-    std::cout << "  v[2]=" << v.at(2) << " v.front()=" << v.front() << " v.back()=" << v.back() << "\n";
+    // --- SEQUENCE CONTAINERS ---
+    std::vector<int> v = {1, 2, 3, 4, 5};         // contiguous memory, resizable
+    v.push_back(6); v.pop_back();
+    std::cout << "vector: size=" << v.size() << " cap=" << v.capacity() << "\n";
 
-    // --- 2. array (fixed-size) ---
-    std::cout << "\n=== 2. array ===\n";
-    std::array<int, 5> arr = {10, 20, 30, 40, 50};
-    for (size_t i = 0; i < arr.size(); ++i) std::cout << arr[i] << " ";
-    std::cout << "\n";
+    std::array<int, 3> arr = {10, 20, 30};         // fixed-size, stack-allocated
+    std::deque<int> dq = {1, 2}; dq.push_front(0); // O(1) front+back insert
+    std::list<std::string> lst = {"b", "a"}; lst.sort(); lst.push_front("c"); // O(1) insert/erase anywhere
+    std::forward_list<int> fl = {3, 1}; fl.push_front(2); fl.reverse();        // singly-linked, less overhead
 
-    // --- 3. deque (double-ended queue) ---
-    std::cout << "\n=== 3. deque ===\n";
-    std::deque<int> dq;
-    dq.push_back(1);
-    dq.push_back(2);
-    dq.push_front(0);
-    dq.push_front(-1);
-    for (int i : dq) std::cout << i << " ";
-    std::cout << "\n";
-
-    // --- 4. list (doubly linked list) ---
-    std::cout << "\n=== 4. list ===\n";
-    std::list<std::string> lst = {"banana", "apple", "cherry"};
-    lst.sort();
-    lst.push_front("date");
-    for (const auto& s : lst) std::cout << s << " ";
-    std::cout << "\n";
-
-    // --- 5. forward_list (singly linked list) ---
-    std::cout << "\n=== 5. forward_list ===\n";
-    std::forward_list<int> fl = {3, 1, 4};
-    fl.push_front(2);
-    fl.reverse();
-    for (int i : fl) std::cout << i << " ";
-    std::cout << "\n";
-
-    // --- 6. map (ordered, red-black tree) ---
-    std::cout << "\n=== 6. map ===\n";
-    std::map<std::string, int> ages;
-    ages["Alice"] = 30;
-    ages["Bob"] = 25;
+    // --- ASSOCIATIVE CONTAINERS ---
+    std::map<std::string, int> ages = {{"Alice", 30}, {"Bob", 25}};        // ordered (red-black tree)
     ages["Charlie"] = 35;
-    ages.insert({"Diana", 28});
-    print_map("ages", ages);
-    std::cout << "  Bob's age: " << ages["Bob"] << "\n";
-    std::cout << "  count(Eve): " << ages.count("Eve") << "\n";
+    std::unordered_map<std::string, double> prices = {{"apple", 1.5}, {"banana", 0.75}}; // hash table
+    std::set<int> s = {5, 3, 8, 1}; s.insert(4); s.erase(3);              // sorted unique
+    std::unordered_set<std::string> tags = {"cpp", "modern"};              // hash set
 
-    // --- 7. unordered_map (hash table) ---
-    std::cout << "\n=== 7. unordered_map ===\n";
-    std::unordered_map<std::string, double> prices = {
-        {"apple", 1.50}, {"banana", 0.75}, {"cherry", 3.00}
-    };
-    for (const auto& [fruit, price] : prices)
-        std::cout << "  " << fruit << ": $" << price << "\n";
-
-    // --- 8. set ---
-    std::cout << "\n=== 8. set ===\n";
-    std::set<int> s = {5, 3, 8, 1, 9, 2, 7};
-    std::cout << "  sorted: ";
-    for (int i : s) std::cout << i << " ";
+    std::cout << "map: ";
+    for (const auto& [k, v] : ages) std::cout << k << ":" << v << " ";
     std::cout << "\n";
-    s.insert(4);
-    s.erase(9);
-    std::cout << "  after insert(4) erase(9): ";
-    for (int i : s) std::cout << i << " ";
-    std::cout << "\n";
+    std::cout << "set: ";
+    for (int i : s) std::cout << i << " "; std::cout << "\n";
 
-    // --- 9. unordered_set ---
-    std::cout << "\n=== 9. unordered_set ===\n";
-    std::unordered_set<std::string> tags = {"cpp", "modern", "stl", "cpp20"};
-    std::cout << "  has 'cpp': " << tags.count("cpp") << "\n";
-    std::cout << "  has 'rust': " << tags.count("rust") << "\n";
+    // --- ADAPTOR CONTAINERS ---
+    std::stack<int> stk; stk.push(10); stk.push(20);             // LIFO
+    std::queue<std::string> q; q.push("first"); q.push("second"); // FIFO
+    std::priority_queue<int> pq; pq.push(5); pq.push(1); pq.push(9); // max-heap
+    std::cout << "stack.top=" << stk.top() << " queue.front=" << q.front() << " heap.top=" << pq.top() << "\n";
 
-    // --- 10. stack (LIFO) ---
-    std::cout << "\n=== 10. stack ===\n";
-    std::stack<int> stk;
-    stk.push(10);
-    stk.push(20);
-    stk.push(30);
-    std::cout << "  top: " << stk.top() << "\n";
-    stk.pop();
-    std::cout << "  after pop, top: " << stk.top() << "\n";
+    // --- UTILITY TYPES ---
+    auto person = std::make_tuple("Alice", 30, 1.65);             // heterogeneous
+    auto& [name, age, height] = person;                            // structured binding
+    std::cout << "tuple: " << name << " age=" << age << "\n";
 
-    // --- 11. queue (FIFO) and priority_queue ---
-    std::cout << "\n=== 11. queue & priority_queue ===\n";
-    std::queue<std::string> q;
-    q.push("first");
-    q.push("second");
-    q.push("third");
-    std::cout << "  front: " << q.front() << " back: " << q.back() << "\n";
+    auto find_value = [](int k) -> std::optional<int> { return k == 42 ? std::optional(42) : std::nullopt; };
+    if (auto val = find_value(42)) std::cout << "optional: found " << *val << "\n";
 
-    std::priority_queue<int> pq;
-    pq.push(5);
-    pq.push(1);
-    pq.push(9);
-    pq.push(3);
-    std::cout << "  priority_queue (max-heap): ";
-    while (!pq.empty()) { std::cout << pq.top() << " "; pq.pop(); }
-    std::cout << "\n";
+    std::variant<int, double, std::string> v1 = "hello";          // type-safe union
+    std::cout << "variant: " << std::get<std::string>(v1) << " (index=" << v1.index() << ")\n";
 
-    // --- 12. tuple ---
-    std::cout << "\n=== 12. tuple ===\n";
-    auto person = std::make_tuple("Alice", 30, 1.65);
-    auto& [name, age, height] = person;
-    std::cout << "  " << name << ", age " << age << ", height " << height << "\n";
-    std::cout << "  get<0>: " << std::get<0>(person) << "\n";
-
-    // --- 13. optional ---
-    std::cout << "\n=== 13. optional ===\n";
-    auto find_value = [](int key) -> std::optional<int> {
-        if (key == 42) return 42;
-        return std::nullopt;
-    };
-    if (auto val = find_value(42))
-        std::cout << "  found: " << *val << "\n";
-    if (auto val = find_value(99))
-        std::cout << "  found: " << *val << "\n";
-    else
-        std::cout << "  99 not found\n";
-
-    // --- 14. variant ---
-    std::cout << "\n=== 14. variant ===\n";
-    std::variant<int, double, std::string> v1 = "hello";
-    std::cout << "  type index: " << v1.index() << "\n";
-    std::cout << "  value: " << std::get<std::string>(v1) << "\n";
-    v1 = 42;
-    std::cout << "  after assign int: " << std::get<int>(v1) << "\n";
-
-    // --- 15. span (non-owning view, C++20) ---
-    std::cout << "\n=== 15. span ===\n";
     std::vector<int> data = {10, 20, 30, 40, 50};
-    std::span<int> view(data);
-    std::cout << "  span size: " << view.size() << "\n";
-    std::cout << "  first: " << view.front() << " last: " << view.back() << "\n";
-    std::cout << "  subspan(1,3): ";
-    for (int i : view.subspan(1, 3)) std::cout << i << " ";
-    std::cout << "\n";
-
-    std::cout << "\nDone.\n";
-    return 0;
+    std::span<int> view(data);                                    // non-owning view
+    std::cout << "span: size=" << view.size() << " subspan(1,3)=" << view[1] << view[2] << view[3] << "\n";
 }

@@ -1,3 +1,12 @@
+// MOVE SEMANTICS & RULE OF 5
+// ===========================
+// Key concepts:
+//   1. Move constructor/assignment transfers resources (steal) instead of copying
+//   2. std::move casts to rvalue reference, enabling move overloads
+//   3. NRVO (Named Return Value Optimization) eliminates copies on return
+//   4. Rule of 5: if you define any of {dtor, copy ctor, copy assign, move ctor, move assign}, define all five
+//   5. emplace_back constructs in-place, avoiding move entirely
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -8,123 +17,57 @@ class Buffer {
     size_t size_;
     int* data_;
 public:
-    explicit Buffer(size_t size)
-        : size_(size), data_(new int[size]) {
-        for (size_t i = 0; i < size_; ++i) data_[i] = 0;
-        std::cout << "  [ctor] allocated " << size_ << " ints\n";
+    explicit Buffer(size_t size) : size_(size), data_(new int[size]{}) {
+        std::cout << "  [ctor] " << size_ << " ints\n";
     }
+    ~Buffer() { delete[] data_; }
 
-    ~Buffer() {
-        delete[] data_;
-        std::cout << "  [dtor] freed " << size_ << " ints\n";
+    // Rule of 5: copy and move operations
+    Buffer(const Buffer& o) : size_(o.size_), data_(new int[o.size_]) {
+        std::copy(o.data_, o.data_ + o.size_, data_);
+        std::cout << "  [copy] " << size_ << " ints\n";
     }
-
-    // Copy constructor — expensive
-    Buffer(const Buffer& other)
-        : size_(other.size_), data_(new int[other.size_]) {
-        std::copy(other.data_, other.data_ + other.size_, data_);
-        std::cout << "  [copy ctor] deep-copied " << size_ << " ints\n";
+    Buffer(Buffer&& o) noexcept : size_(o.size_), data_(o.data_) { // MOVE: steal pointer
+        o.size_ = 0; o.data_ = nullptr;
+        std::cout << "  [move] " << size_ << " ints\n";
     }
-
-    // Move constructor — cheap
-    Buffer(Buffer&& other) noexcept
-        : size_(other.size_), data_(other.data_) {
-        other.size_ = 0;
-        other.data_ = nullptr;
-        std::cout << "  [move ctor] stolen " << size_ << " ints\n";
-    }
-
-    // Copy assignment
-    Buffer& operator=(const Buffer& other) {
-        if (this != &other) {
-            delete[] data_;
-            size_ = other.size_;
-            data_ = new int[size_];
-            std::copy(other.data_, other.data_ + size_, data_);
-            std::cout << "  [copy assign] deep-copied " << size_ << " ints\n";
-        }
+    Buffer& operator=(const Buffer& o) {
+        if (this != &o) { delete[] data_; size_ = o.size_; data_ = new int[size_]; std::copy(o.data_, o.data_ + size_, data_); }
         return *this;
     }
-
-    // Move assignment
-    Buffer& operator=(Buffer&& other) noexcept {
-        if (this != &other) {
-            delete[] data_;
-            size_ = other.size_;
-            data_ = other.data_;
-            other.size_ = 0;
-            other.data_ = nullptr;
-            std::cout << "  [move assign] stolen " << size_ << " ints\n";
-        }
+    Buffer& operator=(Buffer&& o) noexcept {
+        if (this != &o) { delete[] data_; size_ = o.size_; data_ = o.data_; o.size_ = 0; o.data_ = nullptr; }
         return *this;
     }
-
     [[nodiscard]] size_t size() const { return size_; }
 };
 
-Buffer createBuffer(size_t n) {
-    Buffer b(n);
-    return b;  // NRVO or move
-}
-
-void processByValue(Buffer b) {
-    std::cout << "  processing buffer of size " << b.size() << "\n";
-}
+Buffer createBuffer(size_t n) { return Buffer(n); } // NRVO: no copy/move
+void processByValue(Buffer b) { std::cout << "  process size=" << b.size() << "\n"; }
 
 int main() {
-    std::cout << "=== 1. Copy vs Move ===\n";
-    {
-        Buffer a(100);
-        std::cout << "  -- copy a into b --\n";
-        Buffer b(a);              // copy constructor
-        std::cout << "  -- move a into c --\n";
-        Buffer c(std::move(a));   // move constructor, a is now empty
-    }
+    // 1. Copy vs Move: copy duplicates data (expensive), move steals pointer (cheap)
+    std::cout << "=== Copy vs Move ===\n";
+    { Buffer a(100); Buffer b(a); Buffer c(std::move(a)); /* a is now empty */ }
 
-    std::cout << "\n=== 2. Return Value Optimization ===\n";
-    {
-        Buffer b = createBuffer(200);  // no copy, no move (NRVO)
-    }
+    // 2. Return Value Optimization: compiler elides copy/move entirely
+    std::cout << "\n=== NRVO ===\n";
+    { Buffer b = createBuffer(200); }
 
-    std::cout << "\n=== 3. Move into vector ===\n";
-    {
-        std::vector<Buffer> vec;
-        vec.reserve(3);
-        std::cout << "  -- push_back with move --\n";
-        vec.push_back(createBuffer(50));   // move (temporary is rvalue)
-        std::cout << "  -- emplace_back --\n";
-        vec.emplace_back(75);              // constructs in-place
-    }
+    // 3. Move into container: push_back uses move for rvalues, emplace_back constructs in-place
+    std::cout << "\n=== Move into vector ===\n";
+    { std::vector<Buffer> vec; vec.reserve(2); vec.push_back(createBuffer(50)); vec.emplace_back(75); }
 
-    std::cout << "\n=== 4. Perfect Forwarding ===\n";
-    auto wrapper = [](auto&& arg) {
-        processByValue(std::forward<decltype(arg)>(arg));
-    };
-    {
-        Buffer b(30);
-        std::cout << "  forwarding lvalue:\n";
-        wrapper(b);                          // forwards as lvalue → copy
-        std::cout << "  forwarding rvalue:\n";
-        wrapper(Buffer(40));                 // forwards as rvalue → move
-    }
+    // 4. Perfect Forwarding: preserve value category (lvalue stays lvalue, rvalue stays rvalue)
+    std::cout << "\n=== Perfect Forwarding ===\n";
+    auto wrapper = [](auto&& arg) { processByValue(std::forward<decltype(arg)>(arg)); };
+    { Buffer b(30); wrapper(b); wrapper(Buffer(40)); }
 
-    std::cout << "\n=== 5. std::move with strings ===\n";
-    {
-        std::string s = "Hello, C++17 move semantics!";
-        std::string t = std::move(s);
-        std::cout << "  s after move: \"" << s << "\" (size=" << s.size() << ")\n";
-        std::cout << "  t after move: \"" << t << "\"\n";
-    }
+    // 5. std::move with standard types: transfers internal buffer, leaves source in valid-but-empty state
+    std::cout << "\n=== std::move string ===\n";
+    { std::string s = "Hello"; std::string t = std::move(s); std::cout << "  s:\"" << s << "\" t:\"" << t << "\"\n"; }
 
-    std::cout << "\n=== 6. Move-only types (unique_ptr) ===\n";
-    {
-        auto p1 = std::make_unique<int>(42);
-        // auto p2 = p1;              // ERROR: unique_ptr is not copyable
-        auto p2 = std::move(p1);      // OK: move transfers ownership
-        std::cout << "  *p2 = " << *p2 << "\n";
-        std::cout << "  p1 after move: " << (p1 ? "valid" : "null") << "\n";
-    }
-
-    std::cout << "\nDone.\n";
-    return 0;
+    // 6. Move-only types: unique_ptr can't be copied, only moved (transfers ownership)
+    std::cout << "\n=== unique_ptr (move-only) ===\n";
+    { auto p1 = std::make_unique<int>(42); auto p2 = std::move(p1); std::cout << "  *p2=" << *p2 << " p1=" << (p1 ? "valid" : "null") << "\n"; }
 }

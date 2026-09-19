@@ -1,282 +1,115 @@
+// OPERATOR OVERLOADING
+// =====================
+// Key concepts:
+//   1. Member vs free function: binary operators with LHS user type → member; LHS built-in → friend
+//   2. Compound assignment (+=, -=, etc.): return *this for chaining
+//   3. Subscript (operator[]): consider bounds checking, Proxy pattern for multi-dim
+//   4. Function call (operator()): creates functors (callable objects, used with STL)
+//   5. Conversion operators: explicit to prevent implicit conversions
+//   6. Rule of thumb: operators should behave intuitively (don't redefine + to subtract)
+
 #include <iostream>
 #include <cmath>
 #include <string>
 #include <vector>
 #include <initializer_list>
 #include <algorithm>
-#include <typeinfo>
 
-// --- 1. Arithmetic operators ---
+// 1. Arithmetic + comparison + stream operators on a 2D vector
 class Vec2 {
     double x_, y_;
 public:
     constexpr Vec2(double x = 0, double y = 0) : x_(x), y_(y) {}
-
-    // Arithmetic
-    constexpr Vec2 operator+(const Vec2& rhs) const { return {x_ + rhs.x_, y_ + rhs.y_}; }
-    constexpr Vec2 operator-(const Vec2& rhs) const { return {x_ - rhs.x_, y_ - rhs.y_}; }
-    constexpr Vec2 operator*(double scalar) const { return {x_ * scalar, y_ * scalar}; }
-    constexpr Vec2 operator/(double scalar) const { return {x_ / scalar, y_ / scalar}; }
+    constexpr Vec2 operator+(const Vec2& r) const { return {x_+r.x_, y_+r.y_}; }
+    constexpr Vec2 operator-(const Vec2& r) const { return {x_-r.x_, y_-r.y_}; }
+    constexpr Vec2 operator*(double s) const { return {x_*s, y_*s}; }
     constexpr Vec2 operator-() const { return {-x_, -y_}; }
-
-    // Compound assignment
-    Vec2& operator+=(const Vec2& rhs) { x_ += rhs.x_; y_ += rhs.y_; return *this; }
-    Vec2& operator-=(const Vec2& rhs) { x_ -= rhs.x_; y_ -= rhs.y_; return *this; }
-    Vec2& operator*=(double s) { x_ *= s; y_ *= s; return *this; }
-
-    // Comparison
-    constexpr bool operator==(const Vec2& rhs) const = default;
-    constexpr bool operator!=(const Vec2& rhs) const = default;
-
-    // Dot product
-    constexpr double dot(const Vec2& rhs) const { return x_ * rhs.x_ + y_ * rhs.y_; }
-    constexpr double length() const { return std::sqrt(dot(*this)); }
-
-    // Stream output
-    friend std::ostream& operator<<(std::ostream& os, const Vec2& v) {
-        return os << "(" << v.x_ << ", " << v.y_ << ")";
-    }
-
-    // Scalar * Vec2 (free function)
-    friend constexpr Vec2 operator*(double s, const Vec2& v) { return v * s; }
+    Vec2& operator+=(const Vec2& r) { x_+=r.x_; y_+=r.y_; return *this; }
+    constexpr bool operator==(const Vec2& r) const = default;
+    constexpr double dot(const Vec2& r) const { return x_*r.x_ + y_*r.y_; }
+    friend std::ostream& operator<<(std::ostream& os, const Vec2& v) { return os << "(" << v.x_ << "," << v.y_ << ")"; }
+    friend constexpr Vec2 operator*(double s, const Vec2& v) { return v * s; } // LHS built-in
 };
 
-// --- 2. Subscript operator (with bounds checking) ---
+// 2. Subscript with bounds checking
 class SafeArray {
     std::vector<int> data_;
 public:
-    explicit SafeArray(std::initializer_list<int> list) : data_(list) {}
-
-    int& operator[](size_t i) {
-        if (i >= data_.size()) throw std::out_of_range("Index " + std::to_string(i) + " out of range");
-        return data_[i];
-    }
-
-    const int& operator[](size_t i) const {
-        if (i >= data_.size()) throw std::out_of_range("Index " + std::to_string(i) + " out of range");
-        return data_[i];
-    }
-
-    size_t size() const { return data_.size(); }
+    explicit SafeArray(std::initializer_list<int> l) : data_(l) {}
+    int& operator[](size_t i) { if (i>=data_.size()) throw std::out_of_range("out of range"); return data_[i]; }
 };
 
-// --- 3. Function call operator (functor) ---
+// 3. Function call operator (functor) — objects you can "call"
 class Multiplier {
     double factor_;
 public:
     explicit Multiplier(double f) : factor_(f) {}
     double operator()(double x) const { return x * factor_; }
-    double operator()(double x, double y) const { return x * y * factor_; }
 };
 
-// --- 4. Increment / Decrement ---
+// 4. Increment/decrement (prefix returns ref, postfix returns old value)
 class Counter {
-    int value_;
+    int v_;
 public:
-    explicit Counter(int v = 0) : value_(v) {}
-
-    Counter& operator++() { ++value_; return *this; }     // prefix
-    Counter operator++(int) { auto tmp = *this; ++value_; return tmp; } // postfix
-    Counter& operator--() { --value_; return *this; }
-    Counter operator--(int) { auto tmp = *this; --value_; return tmp; }
-
-    friend std::ostream& operator<<(std::ostream& os, const Counter& c) {
-        return os << "Counter(" << c.value_ << ")";
-    }
+    explicit Counter(int v = 0) : v_(v) {}
+    Counter& operator++() { ++v_; return *this; }
+    Counter operator++(int) { auto tmp=*this; ++v_; return tmp; }
+    friend std::ostream& operator<<(std::ostream& os, const Counter& c) { return os << c.v_; }
 };
 
-// --- 5. Dereference and member access ---
-class PointerWrapper {
-    int* ptr_;
-public:
-    explicit PointerWrapper(int* p) : ptr_(p) {}
-    ~PointerWrapper() { delete ptr_; }
-
-    int& operator*() { return *ptr_; }
-    const int& operator*() const { return *ptr_; }
-    int* operator->() { return ptr_; }
-    const int* operator->() const { return ptr_; }
-
-    PointerWrapper(const PointerWrapper&) = delete;
-    PointerWrapper& operator=(const PointerWrapper&) = delete;
-};
-
-struct Person {
-    std::string name;
-    int age;
-};
-
-// --- 6. Type conversion operators ---
+// 5. Explicit type conversion operators
 class Temperature {
-    double celsius_;
+    double c_;
 public:
-    explicit Temperature(double c) : celsius_(c) {}
-
-    explicit operator double() const { return celsius_; }
-    explicit operator bool() const { return celsius_ > 0.0; }
-
-    friend std::ostream& operator<<(std::ostream& os, const Temperature& t) {
-        return os << t.celsius_ << "°C";
-    }
+    explicit Temperature(double c) : c_(c) {}
+    explicit operator double() const { return c_; }
+    explicit operator bool() const { return c_ > 0.0; }
 };
 
-// --- 7. Comma operator ---
-class Vector3 {
-    double x_, y_, z_;
-public:
-    constexpr Vector3(double x, double y, double z) : x_(x), y_(y), z_(z) {}
-    constexpr Vector3 operator,(const Vector3& rhs) const {
-        return rhs;  // comma returns right operand
-    }
-    constexpr double x() const { return x_; }
-    constexpr double y() const { return y_; }
-    constexpr double z() const { return z_; }
-    friend std::ostream& operator<<(std::ostream& os, const Vector3& v) {
-        return os << "(" << v.x_ << ", " << v.y_ << ", " << v.z_ << ")";
-    }
-};
-
-// --- 8. new / delete operators ---
-class TrackedAllocator {
-    static int count_;
-public:
-    void* operator new(size_t size) {
-        ++count_;
-        std::cout << "  [new] allocating " << size << " bytes (total: " << count_ << ")\n";
-        return ::operator new(size);
-    }
-
-    void operator delete(void* ptr, size_t size) {
-        --count_;
-        std::cout << "  [delete] freeing " << size << " bytes (total: " << count_ << ")\n";
-        ::operator delete(ptr);
-    }
-
-    static int count() { return count_; }
-};
-int TrackedAllocator::count_ = 0;
-
-// --- 9. Subscript operator with two dimensions ---
+// 6. Matrix with Proxy for m[i][j] syntax
 class Matrix {
     size_t rows_, cols_;
     std::vector<double> data_;
-public:
-    Matrix(size_t r, size_t c) : rows_(r), cols_(c), data_(r * c, 0.0) {}
-
     class Proxy {
-        double* row_ptr_;
-        size_t cols_;
+        double* row_; size_t cols_;
     public:
-        Proxy(double* row_ptr, size_t cols) : row_ptr_(row_ptr), cols_(cols) {}
-        double& operator[](size_t j) {
-            if (j >= cols_) throw std::out_of_range("Column out of range");
-            return row_ptr_[j];
-        }
+        Proxy(double* r, size_t c) : row_(r), cols_(c) {}
+        double& operator[](size_t j) { if (j>=cols_) throw std::out_of_range("col"); return row_[j]; }
     };
-
-    Proxy operator[](size_t i) {
-        if (i >= rows_) throw std::out_of_range("Row out of range");
-        return Proxy(data_.data() + i * cols_, cols_);
-    }
-
+public:
+    Matrix(size_t r, size_t c) : rows_(r), cols_(c), data_(r*c, 0.0) {}
+    Proxy operator[](size_t i) { if (i>=rows_) throw std::out_of_range("row"); return Proxy(data_.data()+i*cols_, cols_); }
     friend std::ostream& operator<<(std::ostream& os, const Matrix& m) {
-        for (size_t i = 0; i < m.rows_; ++i) {
-            for (size_t j = 0; j < m.cols_; ++j)
-                os << m.data_[i * m.cols_ + j] << " ";
-            os << "\n";
-        }
-        return os;
+        for (size_t i=0;i<m.rows_;++i) { for (size_t j=0;j<m.cols_;++j) os<<m.data_[i*m.cols_+j]<<" "; os<<"\n"; } return os;
     }
 };
 
 int main() {
-    // --- 1. Arithmetic operators ---
-    std::cout << "=== 1. Arithmetic Operators ===\n";
-    Vec2 a(1, 2), b(3, 4);
-    std::cout << "  a = " << a << "\n";
-    std::cout << "  b = " << b << "\n";
-    std::cout << "  a + b = " << a + b << "\n";
-    std::cout << "  a - b = " << a - b << "\n";
-    std::cout << "  a * 3 = " << a * 3 << "\n";
-    std::cout << "  3 * a = " << 3.0 * a << "\n";
-    std::cout << "  -a = " << -a << "\n";
-    std::cout << "  a == b: " << std::boolalpha << (a == b) << "\n";
-    std::cout << "  a.dot(b) = " << a.dot(b) << "\n";
-    std::cout << "  a.length() = " << a.length() << "\n";
+    // Arithmetic operators
+    Vec2 a(1,2), b(3,4);
+    std::cout << "a=" << a << " b=" << b << " a+b=" << a+b << " a*b=" << a*3 << " 3*a=" << 3.0*a << "\n";
+    std::cout << "a==b:" << std::boolalpha << (a==b) << " a.dot(b)=" << a.dot(b) << "\n";
 
-    a += b;
-    std::cout << "  a += b: " << a << "\n";
+    // Subscript
+    SafeArray arr({10,20,30});
+    std::cout << "arr[1]=" << arr[1] << "\n";
 
-    // --- 2. Subscript ---
-    std::cout << "\n=== 2. Subscript Operator ===\n";
-    SafeArray arr({10, 20, 30, 40, 50});
-    std::cout << "  arr[2] = " << arr[2] << "\n";
-    try {
-        arr[10];  // throws
-    } catch (const std::out_of_range& e) {
-        std::cout << "  arr[10]: " << e.what() << "\n";
-    }
-
-    // --- 3. Function call operator ---
-    std::cout << "\n=== 3. Function Call Operator (Functor) ===\n";
+    // Functor
     Multiplier times3(3.0);
-    std::cout << "  times3(5) = " << times3(5.0) << "\n";
-    std::cout << "  times3(2, 3) = " << times3(2.0, 3.0) << "\n";
+    std::vector<double> v = {1,2,3,4,5};
+    std::transform(v.begin(), v.end(), v.begin(), times3);
+    std::cout << "times3: "; for (double x : v) std::cout << x << " "; std::cout << "\n";
 
-    // Use with STL
-    std::vector<double> vals = {1, 2, 3, 4, 5};
-    std::transform(vals.begin(), vals.end(), vals.begin(), Multiplier(10.0));
-    std::cout << "  transformed: ";
-    for (double v : vals) std::cout << v << " ";
-    std::cout << "\n";
-
-    // --- 4. Increment / Decrement ---
-    std::cout << "\n=== 4. Increment / Decrement ===\n";
+    // Increment
     Counter c(5);
-    std::cout << "  " << c << "\n";
-    std::cout << "  ++c = " << ++c << "\n";
-    std::cout << "  c++ = " << c++ << " (returned old)\n";
-    std::cout << "  c = " << c << "\n";
-    std::cout << "  --c = " << --c << "\n";
-    std::cout << "  c-- = " << c-- << " (returned old)\n";
-    std::cout << "  c = " << c << "\n";
+    std::cout << "c=" << c << " ++c=" << ++c << " c++=" << c++ << " c=" << c << "\n";
 
-    // --- 5. Dereference / member access ---
-    std::cout << "\n=== 5. Dereference & Member Access ===\n";
-    PointerWrapper pw(new int(42));
-    std::cout << "  *pw = " << *pw << "\n";
-
-    // --- 6. Type conversion ---
-    std::cout << "\n=== 6. Type Conversion Operators ===\n";
+    // Type conversion
     Temperature t(36.6);
-    double val = static_cast<double>(t);
-    std::cout << "  " << t << " as double: " << val << "\n";
-    if (t) std::cout << "  temperature is positive\n";
+    std::cout << "temp as double: " << static_cast<double>(t) << " positive:" << (bool)t << "\n";
 
-    // --- 7. Comma operator ---
-    std::cout << "\n=== 7. Comma Operator ===\n";
-    Vector3 v1(1, 2, 3), v2(4, 5, 6);
-    auto result = (v1, v2);
-    std::cout << "  (v1, v2) = " << result << "\n";
-
-    // --- 8. new / delete ---
-    std::cout << "\n=== 8. Custom new/delete ===\n";
-    std::cout << "  allocations: " << TrackedAllocator::count() << "\n";
-    auto* p1 = new TrackedAllocator();
-    auto* p2 = new TrackedAllocator();
-    std::cout << "  allocations: " << TrackedAllocator::count() << "\n";
-    delete p1;
-    delete p2;
-    std::cout << "  allocations: " << TrackedAllocator::count() << "\n";
-
-    // --- 9. Matrix subscript ---
-    std::cout << "\n=== 9. Matrix double subscript ===\n";
-    Matrix m(3, 3);
-    m[0][0] = 1; m[0][1] = 2; m[0][2] = 3;
-    m[1][0] = 4; m[1][1] = 5; m[1][2] = 6;
-    m[2][0] = 7; m[2][1] = 8; m[2][2] = 9;
-    std::cout << m;
-
-    std::cout << "\nDone.\n";
-    return 0;
+    // Matrix m[i][j]
+    Matrix m(2,3);
+    m[0][0]=1; m[0][1]=2; m[0][2]=3; m[1][0]=4; m[1][1]=5; m[1][2]=6;
+    std::cout << "matrix:\n" << m;
 }
