@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 3.10)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_executable(networking_low_latency_udp low_latency_udp.cpp)
+target_compile_options(networking_low_latency_udp PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_low_latency_udp PRIVATE pthread)
+
+add_executable(networking_latency_cost_examples latency_cost_examples.cpp)
+target_compile_options(networking_latency_cost_examples PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_latency_cost_examples PRIVATE pthread)
+
+add_executable(networking_tcp_epoll_examples tcp_epoll_examples.cpp)
+target_compile_options(networking_tcp_epoll_examples PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_tcp_epoll_examples PRIVATE pthread)
+
+add_executable(networking_buffering_serialization_examples buffering_serialization_examples.cpp)
+target_compile_options(networking_buffering_serialization_examples PRIVATE -Wall -Wextra -O2)
+
+add_executable(networking_concurrency_domain_examples concurrency_domain_examples.cpp)
+target_compile_options(networking_concurrency_domain_examples PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_concurrency_domain_examples PRIVATE pthread)
+
+add_executable(networking_foundation_project_examples foundation_project_examples.cpp)
+target_compile_options(networking_foundation_project_examples PRIVATE -Wall -Wextra -O2)
+target_link_libraries(networking_foundation_project_examples PRIVATE pthread)

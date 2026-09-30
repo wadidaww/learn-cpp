@@ -1,19 +1,78 @@
 #include <functional>
+#include <stdexcept>
 #include <iostream>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 template<typename... Ts>
 constexpr auto sum_values(Ts... values) {
     return (values + ... + 0);
 }
 
+template<typename T>
+constexpr auto min_value(T value) {
+    return value;
+}
+
+template<typename First, typename Second, typename... Rest>
+constexpr auto min_value(First first, Second second, Rest... rest) {
+    using Value = std::common_type_t<First, Second, Rest...>;
+    Value minimum = static_cast<Value>(first);
+    const auto keep_smaller = [&minimum](const auto& value) {
+        const Value candidate = static_cast<Value>(value);
+        if (candidate < minimum) {
+            minimum = candidate;
+        }
+    };
+    keep_smaller(second);
+    (keep_smaller(rest), ...);
+    return minimum;
+}
+
+template<typename First, typename... Rest>
+auto make_vector(First&& first, Rest&&... rest) {
+    using Value = std::common_type_t<First, Rest...>;
+    std::vector<Value> result;
+    result.reserve(sizeof...(Rest) + 1);
+    result.emplace_back(std::forward<First>(first));
+    (result.emplace_back(std::forward<Rest>(rest)), ...);
+    return result;
+}
+
 template<typename... Ts>
 void print_line(const Ts&... values) {
     ((std::cout << values << ' '), ...);
     std::cout << '\n';
+}
+
+void tiny_printf_impl(std::ostream& output, const std::string& format, std::size_t offset) {
+    // Base case for the recursive pack expansion.
+    const std::size_t placeholder = format.find("{}", offset);
+    if (placeholder != std::string::npos) {
+        throw std::invalid_argument("tiny_printf received fewer values than placeholders");
+    }
+
+    output << format.substr(offset);
+}
+
+template<typename First, typename... Rest>
+void tiny_printf_impl(std::ostream& output, const std::string& format, std::size_t offset, First&& first, Rest&&... rest) {
+    const std::size_t placeholder = format.find("{}", offset);
+    if (placeholder == std::string::npos) {
+        throw std::invalid_argument("tiny_printf received more values than placeholders");
+    }
+
+    output << format.substr(offset, placeholder - offset);
+    output << std::forward<First>(first);
+    tiny_printf_impl(output, format, placeholder + 2, std::forward<Rest>(rest)...);
+}
+
+template<typename... Ts>
+void tiny_printf(std::ostream& output, const std::string& format, Ts&&... values) {
+    tiny_printf_impl(output, format, 0, std::forward<Ts>(values)...);
 }
 
 template<typename Function, typename... Args>
@@ -74,10 +133,12 @@ int add_three_numbers(int a, int b, int c) {
 
 int main() {
     static_assert(sum_values(1, 2, 3, 4) == 10);
+    static_assert(min_value(7, 4, 9, 2, 5) == 2);
     static_assert(all_integral_v<int, short, long>);
     static_assert(!all_integral_v<int, double>);
     static_assert(std::is_same_v<nth_type_t<1, char, double, std::string>, double>);
     static_assert(count_type_v<int, int, double, int, char, int> == 3);
+    static_assert(std::is_same_v<typename decltype(make_vector(1, 2.5, 3u))::value_type, double>);
     static_assert(list_size<type_list<int, double, char>>::value == 3);
     static_assert(value_list<2, 3, 4>::sum == 9);
     static_assert(value_list<2, 3, 4>::product == 24);
@@ -86,24 +147,40 @@ int main() {
 
     std::cout << "1) Fold expressions over runtime values\n";
     std::cout << "sum_values(5, 10, 15) = " << sum_values(5, 10, 15) << "\n";
+    std::cout << "min_value(7, 4, 9, 2, 5) = " << min_value(7, 4, 9, 2, 5) << "\n";
     print_line("pack contents:", 5, 10, 15, 20);
     std::cout << '\n';
 
-    std::cout << "2) Perfect forwarding into another callable\n";
+    std::cout << "2) Deducing one container type from a pack\n";
+    const auto values = make_vector(1, 2.5, 3u);
+    std::cout << "make_vector(1, 2.5, 3u) stores " << values.size()
+              << " values with common type double: ";
+    for (const auto value : values) {
+        std::cout << value << ' ';
+    }
+    std::cout << "\n\n";
+
+    std::cout << "3) Tiny printf-style formatting with a type-safe argument pack\n";
+    tiny_printf(std::cout, "name={}, score={}, active={}\n\n", "Ada", 98.5, true);
+
+    std::cout << "4) Perfect forwarding into another callable\n";
     const int total = call_with_logging(add_three_numbers, 1, 2, 3);
     std::cout << "logged total = " << total << "\n\n";
 
-    std::cout << "3) Compile-time type computations\n";
+    std::cout << "5) Compile-time type computations\n";
     std::cout << "count_type_v<int, int, double, int, char, int> = "
               << count_type_v<int, int, double, int, char, int> << "\n";
+    std::cout << "nth_type_t<1, char, double, std::string> is double = "
+              << std::boolalpha << std::is_same_v<nth_type_t<1, char, double, std::string>, double>
+              << std::noboolalpha << "\n";
     std::cout << "list_size<type_list<int, double, char>>::value = "
               << list_size<type_list<int, double, char>>::value << "\n\n";
 
-    std::cout << "4) Compile-time value computations\n";
+    std::cout << "6) Compile-time value computations\n";
     std::cout << "value_list<2, 3, 4>::sum = " << value_list<2, 3, 4>::sum << "\n";
     std::cout << "value_list<2, 3, 4>::product = " << value_list<2, 3, 4>::product << "\n\n";
 
-    std::cout << "5) Expanding packs with generated indices\n";
+    std::cout << "7) Expanding packs with generated indices\n";
     print_tuple(std::make_tuple("zero", 1, 2.5, std::string("three")));
     std::cout << '\n';
 
