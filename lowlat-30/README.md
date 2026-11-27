@@ -57,8 +57,16 @@ Targets are built one at a time, so an unfinished day never breaks a finished on
 | 3 | 19 | CPU isolation, IRQs, NUMA, jitter probe | `week3/day19-cpu-isolation` |
 | 3 | 20 | Market microstructure, ITCH 5.0 feed handler | `week3/day20-itch` |
 | 3 | 21 | FIX order entry, binary protocols, Mock 3 | `week3/day21-fix` |
+| 4 | 22 | System design end to end, pre-trade risk gate | `week4/day22-system-design` |
+| 4 | 23 | Probability toolkit, optimal stopping | `week4/day23-probability` |
+| 4 | 24 | Behavioural rounds, stories, 60-second intro | `week4/day24-stories` |
+| 4 | 25 | Mock 4: full loop | `week4/day25-mock4` |
+| 4 | 26 | Weak list, Jane Street-style coding | `week4/day26-weak-list` |
+| 4 | 27 | Market-making games, quoting with inventory skew | `week4/day27-market-making` |
+| 4 | 28 | Mock 5: low-latency deep dive | `week4/day28-mock5` |
+| 4 | 29 | Redo every build task from memory, timed (`drill.sh`) | `week4/day29-redo-from-memory` |
+| 4 | 30 | Rest, reread, plan the next two weeks | `week4/day30-plan` |
 
-Week 4 is added as it is written.
 
 ## common/
 
