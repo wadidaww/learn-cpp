@@ -50,8 +50,15 @@ Targets are built one at a time, so an unfinished day never breaks a finished on
 | 2 | 12 | Measurement, histograms, coordinated omission | `week2/day12-measurement` |
 | 2 | 13 | Profiling with perf and flame graphs | `week2/day13-profiling` |
 | 2 | 14 | Defend your numbers, resume bullet, Mock 2 | `week2/day14-defend-your-numbers` |
+| 3 | 15 | TCP framing, Nagle, sockets | `week3/day15-tcp-framing` |
+| 3 | 16 | epoll, edge-triggered, busy polling | `week3/day16-epoll` |
+| 3 | 17 | UDP multicast, A/B arbitration, gaps | `week3/day17-multicast-gaps` |
+| 3 | 18 | Kernel bypass, timestamps | `week3/day18-kernel-bypass` |
+| 3 | 19 | CPU isolation, IRQs, NUMA, jitter probe | `week3/day19-cpu-isolation` |
+| 3 | 20 | Market microstructure, ITCH 5.0 feed handler | `week3/day20-itch` |
+| 3 | 21 | FIX order entry, binary protocols, Mock 3 | `week3/day21-fix` |
 
-Weeks 3 and 4 are added as they are written.
+Week 4 is added as it is written.
 
 ## common/
 
