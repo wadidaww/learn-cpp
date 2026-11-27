@@ -1,0 +1,41 @@
+cmake_minimum_required(VERSION 3.20)
+project(lowlat30 CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+# -DLL_SANITIZE=thread  or  -DLL_SANITIZE=address,undefined
+set(LL_SANITIZE "" CACHE STRING "Sanitizers to enable")
+
+find_package(Threads REQUIRED)
+
+function(ll_exercise name dir)
+  foreach(kind test bench)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/${kind}.cpp)
+      set(tgt ${name}_${kind})
+      add_executable(${tgt} ${dir}/${kind}.cpp)
+      # Exercises are built one at a time (cmake --build build --target day05_test),
+      # so an unfinished day never blocks a finished one.
+      set_target_properties(${tgt} PROPERTIES EXCLUDE_FROM_ALL ON)
+      target_include_directories(${tgt} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common ${CMAKE_CURRENT_SOURCE_DIR}/${dir})
+      target_compile_options(${tgt} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -march=native)
+      target_link_libraries(${tgt} PRIVATE Threads::Threads)
+      if(LL_SANITIZE)
+        target_compile_options(${tgt} PRIVATE -fsanitize=${LL_SANITIZE} -fno-omit-frame-pointer)
+        target_link_options(${tgt} PRIVATE -fsanitize=${LL_SANITIZE})
+      endif()
+    endif()
+  endforeach()
+endfunction()
+
+ll_exercise(day01 week1/day01-fixed-vector)
+ll_exercise(day02 week1/day02-binary-decoding)
+ll_exercise(day03 week1/day03-crtp-vs-virtual)
+ll_exercise(day04 week1/day04-spinlocks)
+ll_exercise(day05 week1/day05-spsc-ring)
+ll_exercise(day06 week1/day06-seqlock)
+ll_exercise(day07 week1/day07-spsc-benchmark)
