@@ -43,10 +43,18 @@ Targets are built one at a time, so an unfinished day never breaks a finished on
 | 1 | 5 | False sharing, SPSC ring | `week1/day05-spsc-ring` |
 | 1 | 6 | Seqlock, ABA, lock-free vocabulary | `week1/day06-seqlock` |
 | 1 | 7 | Measure the ring, review, Mock 1 | `week1/day07-spsc-benchmark` |
+| 2 | 8 | Cache hierarchy, TLB, huge pages | `week2/day08-cache-hierarchy` |
+| 2 | 9 | Branch prediction, branchless code, AoS vs SoA | `week2/day09-branches` |
+| 2 | 10 | Allocation cost, object pool | `week2/day10-object-pool` |
+| 2 | 11 | L3 order book with matching | `week2/day11-order-book` |
+| 2 | 12 | Measurement, histograms, coordinated omission | `week2/day12-measurement` |
+| 2 | 13 | Profiling with perf and flame graphs | `week2/day13-profiling` |
+| 2 | 14 | Defend your numbers, resume bullet, Mock 2 | `week2/day14-defend-your-numbers` |
 
-Weeks 2 to 4 are added as they are written.
+Weeks 3 and 4 are added as they are written.
 
 ## common/
 
 - `check.hpp`: a 60-line test harness (`TEST`, `CHECK`, `CHECK_EQ`), so nothing needs installing.
 - `bench.hpp`: TSC timing, percentiles, thread pinning, `do_not_optimize`. Week 2 day 12 explains it line by line.
+- `rng.hpp`: `SplitMix64`, a deterministic generator so tests and benches give the same results on every compiler.
